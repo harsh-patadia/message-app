@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
+import { 
   View, Text, FlatList, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform
 } from 'react-native';
@@ -9,20 +9,25 @@ export default function ChatScreen({ route }) {
   const [messages, setMessages] = useState([]);
   const [newMsg, setNewMsg] = useState('');
 
+  console.log("friend", friend);
+  console.log("user", user);
+  
+
+  // Fetch messages from backend
   const fetchMessages = async () => {
     try {
-      let response = await fetch(`http://127.0.0.1:5000/messages/${friend._id}`, {
+      const response = await fetch(`http://127.0.0.1:5000/messages/${friend.id ? friend.id : friend._id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': user.user_id,
         },
       });
-      let json = await response.json();
+      const json = await response.json();
       if (response.ok) {
         setMessages(json.messages);
       } else {
-        alert(json.error);
+        alert(json.error || "Error fetching messages");
       }
     } catch (error) {
       console.error(error);
@@ -30,20 +35,24 @@ export default function ChatScreen({ route }) {
     }
   };
 
+  // Send a new message
   const handleSend = async () => {
     if (!newMsg.trim()) return;
     try {
-      let response = await fetch('http://127.0.0.1:5000/messages', {
+      const response = await fetch('http://127.0.0.1:5000/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': user.user_id },
-        body: JSON.stringify({ recipient_id: friend._id, content: newMsg })
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': user.user_id 
+        },
+        body: JSON.stringify({ recipient_id: friend._id? friend._id : friend.id , content: newMsg })
       });
-      let json = await response.json();
+      const json = await response.json();
       if (response.ok) {
         setNewMsg('');
         fetchMessages();
       } else {
-        alert(json.error);
+        alert(json.error || "Error sending message");
       }
     } catch (error) {
       console.error(error);
@@ -51,12 +60,19 @@ export default function ChatScreen({ route }) {
     }
   };
 
+  useEffect(() => {
+    fetchMessages();
+  }, []);
+  
+  // Render each message
   const renderItem = ({ item }) => {
     const isMe = item.sender_id === user.user_id;
     return (
       <View style={[styles.messageContainer, isMe ? styles.outgoing : styles.incoming]}>
-        <View style={styles.bubble}>
-          <Text style={styles.messageText}>{item.content}</Text>
+        <View style={[styles.bubble, isMe ? styles.outgoingBubble : styles.incomingBubble]}>
+          <Text style={[styles.messageText, isMe ? styles.outgoingText : styles.incomingText]}>
+            {item.content}
+          </Text>
           <Text style={styles.timestamp}>
             {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
@@ -66,10 +82,13 @@ export default function ChatScreen({ route }) {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <FlatList 
         data={messages}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item) => item._id.toString()}
         renderItem={renderItem}
         style={styles.messagesList}
         contentContainerStyle={{ paddingBottom: 10 }}
@@ -91,17 +110,50 @@ export default function ChatScreen({ route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f7fa' },
-  messagesList: { flex: 1, padding: 10 },
-  messageContainer: { marginVertical: 5, padding: 10, borderRadius: 10, maxWidth: '80%' },
-  incoming: { alignSelf: 'flex-start', backgroundColor: '#eee' },
-  outgoing: { alignSelf: 'flex-end', backgroundColor: '#0088cc' },
-  bubble: {
-    borderRadius: 10,
-    padding: 8,
+  container: { 
+    flex: 1, 
+    backgroundColor: '#f5f7fa' 
   },
-  messageText: { color: '#fff', fontSize: 16 },
-  timestamp: { fontSize: 10, color: '#fff', alignSelf: 'flex-end', marginTop: 5 },
+  messagesList: { 
+    flex: 1, 
+    padding: 10 
+  },
+  messageContainer: { 
+    marginVertical: 5, 
+    padding: 5, 
+    maxWidth: '80%' 
+  },
+  incoming: { 
+    alignSelf: 'flex-start' 
+  },
+  outgoing: { 
+    alignSelf: 'flex-end' 
+  },
+  bubble: { 
+    borderRadius: 10, 
+    padding: 8 
+  },
+  incomingBubble: { 
+    backgroundColor: '#eee' 
+  },
+  outgoingBubble: { 
+    backgroundColor: '#0088cc' 
+  },
+  messageText: { 
+    fontSize: 16 
+  },
+  incomingText: { 
+    color: '#333' 
+  },
+  outgoingText: { 
+    color: '#fff' 
+  },
+  timestamp: { 
+    fontSize: 10, 
+    color: '#666', 
+    alignSelf: 'flex-end', 
+    marginTop: 5 
+  },
   inputContainer: {
     flexDirection: 'row',
     padding: 10,
@@ -109,7 +161,7 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     backgroundColor: '#fff'
   },
-  input: {
+  input: { 
     flex: 1,
     backgroundColor: '#f1f3f6',
     borderRadius: 20,
@@ -118,12 +170,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333'
   },
-  sendButton: {
+  sendButton: { 
     backgroundColor: '#0088cc',
     padding: 12,
     borderRadius: 25,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'center'
   },
-  sendText: { color: '#fff', fontSize: 18 },
+  sendText: { 
+    color: '#fff',
+    fontSize: 18
+  }
 });
